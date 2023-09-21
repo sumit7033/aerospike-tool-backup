@@ -53,6 +53,7 @@ make -C build
 cd build
 make install
 cd ../..
+# Compiling the aerospike-tool (run this in aerospike-tool directory.)
 export PATH=/opt/rh/devtoolset-7/root/usr/bin/:$PATH
 make EVENT_LIB=libuv
 ```
