@@ -1,5 +1,8 @@
 ## Cloning the aerospike-tools-backup
+```shell
 git clone https://github.com/aerospike/aerospike-tools-backup.
+```
+
 
 ## Building
 
