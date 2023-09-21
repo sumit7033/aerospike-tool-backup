@@ -1,68 +1,18 @@
-## Aerospike Backup Tools
-
-![Build:Main](https://github.com/citrusleaf/aerospike-tools-backup/workflows/Build:Main/badge.svg)
-[![codecov](https://codecov.io/gh/aerospike/aerospike-tools-backup/branch/main/graph/badge.svg)](https://codecov.io/gh/aerospike/aerospike-tools-backup)
-
-This is the developer documentation. For user documentation, please consult http://www.aerospike.com/docs/tools/backup.
+## Cloning the aerospike-tools-backup
+git clone https://github.com/aerospike/aerospike-tools-backup.
 
 ## Building
 
-Make sure you have all dependencies installed for the Aerospike C client and asbackup.
-See https://github.com/aerospike/aerospike-client-c#build-prerequisites for more C client information.
-Below are dependencies for asbackup only.
-- openssl 3
-- An event library: libuv, libevent, or libev (also used by the C client submodule)
-- zstd
-- libssh2
-- aws-sdk-cpp version 1.10.55
-- curl
-
-Clone the source code of the Aerospike backup tools from GitHub.
-
-    git clone https://github.com/aerospike/aerospike-tools-backup
-
-Then build the backup tools.
-
-    cd aerospike-tools-backup
-    make
-
-This gives you two binaries in the `bin` subdirectory -- `asbackup` and `asrestore`.
-
-## Build Examples
-
-### Debian and Ubuntu (dynamic linking)
-
+### Build Prerequisites.
 ```shell
-apt-get update
+1$ sudo yum install openssl-devel glibc-devel autoconf automake libtool
 
-# Install C client dependencies...
+[Optional:]
+$ sudo yum install lua-devel
+$ sudo yum install gcc-c++ graphviz rpm-build
 
-# asbackup dependencies
-apt-get install build-essential libssl-dev libuv1-dev libcurl4-openssl-dev libzstd-dev
-
-# for aws-sdk-cpp build
-apt-get install cmake
-
-# download aws sdk
-git clone https://github.com/aws/aws-sdk-cpp.git
-cd aws-sdk-cpp
-git submodule update --init --recursive
-
-# build aws sdk dynamic
-mkdir build
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="s3" -DBUILD_SHARED_LIBS=ON -DENABLE_TESTING=OFF -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_INSTALL_LIBDIR=lib
-make -C build
-
-# install aws static sdk
-cd build
-make install
-cd ../..
-
-make EVENT_LIB=libuv
 ```
-
-### Red Hat Enterprise Linux or CentOS (dynamic linking)
-
+### Build the utility tool.
 ```shell
 yum update
 
@@ -100,87 +50,9 @@ make -C build
 cd build
 make install
 cd ../..
-
+export PATH=/opt/rh/devtoolset-7/root/usr/bin/:$PATH
 make EVENT_LIB=libuv
 ```
-
-### MacOS (dynamic linking)
-
-```shell
-# Install C client dependencies...
-
-brew install openssl libuv curl zstd libssh2 aws-sdk-cpp
-make EVENT_LIB=libuv
-```
-
-### MacOS (static linking example script)
-Note: Some brew installs don't come with static libraries so source install are needed.
-
-```shell
-# Install C client dependencies...
-
-# curl and aws don't come with static objects so get those later, from source
-# brew installed libssh2 currently depends on openssl 1.1.1. We source install it to link with a different openssl.
-brew install libuv cmake zstd openssl
-
-# download libssh2
-git clone https://github.com/libssh2/libssh2.git
-cd libssh2
-git submodule update --init --recursive
-
-# build libssh2
-mkdir build_static
-cd build_static
-cmake -DOPENSSL_ROOT_DIR=/opt/homebrew/opt/openssl/ -DCMAKE_BUILD_TYPE=Release ..
-cmake --build .
-
-# install libssh2
-sudo make install
-cd ../..
-
-# downlad curl
-git clone https://github.com/curl/curl.git
-cd curl
-git submodule update --init --recursive
-
-# build curl
-mkdir build
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_INSTALL_LIBDIR=lib -DBUILD_SHARED_LIBS=OFF -DBUILD_CURL_EXE=OFF -DOPENSSL_ROOT_DIR=/opt/homebrew/opt/openssl OPENSSL_USE_STATIC_LIBS=TRUE -DHTTP_ONLY=ON
-make -C build
-
-# install curl
-cd build
-sudo make install
-cd ../..
-
-# download aws sdk
-git clone https://github.com/aws/aws-sdk-cpp.git
-cd aws-sdk-cpp
-git submodule update --init --recursive
-
-# build aws sdk static
-mkdir build_static
-cmake -S . -B build_static -DOPENSSL_ROOT_DIR=/opt/homebrew/opt/openssl/ -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="s3" -DBUILD_SHARED_LIBS=OFF -DENABLE_TESTING=OFF -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_INSTALL_LIBDIR=lib
-make -C build_static
-
-# install aws static sdk
-cd build_static
-sudo make install
-cd ../..
-
-# build asbackup
-make EVENT_LIB=libuv ZSTD_STATIC_PATH=/opt/homebrew/lib AWS_SDK_STATIC_PATH=/usr/local/lib CURL_STATIC_PATH=/usr/local/lib OPENSSL_STATIC_PATH=/opt/homebrew/opt/openssl/lib LIBSSH2_STATIC_PATH=/usr/local/lib LIBUV_STATIC_PATH=/opt/homebrew/lib
-```
-
-## Tests
-
-In order to run the tests that come with the code, you need `docker` installed. The tests spin up an Aerospike Cluster using docker containers for each node.
-
-Please make sure that you have Python 3, `virtualenv`, and optionally `valgrind` installed. By default, the tests run `asbackup` and `asrestore` under the Valgrind memory checker. If you don't have the `valgrind` command, please change `USE_VALGRIND` in `test/lib.py` to `False`. Then run the tests.
-
-    make test
-
-This creates a virtual Python environment in a new subdirectory (`env`), activates it, and installs the Python packages required by the tests. Then the actual tests run.
 
 ## Backup Source Code
 
