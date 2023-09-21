@@ -1649,14 +1649,14 @@ void read_bin_value() {
     }
 
 	inf("Reading from the file...");
-    char line[25]; 
+    char line[25];
     bin_set_pointer = kh_init(bin_set);
     while (fgets(line, sizeof(line), file)) {
-        int64_t id; 
+        int64_t id;
 		if(sscanf(line, "%" SCNd64, &id) == 1) {
 			if(id < INT64_MAX && id > INT64_MIN) {
-				int ret; 
-				kh_put(bin_set, bin_set_pointer, id, &ret); 
+				int ret;
+				kh_put(bin_set, bin_set_pointer, id, &ret);
 				if (ret < 0) {
 					err("Error inserting into hash set");
 					fclose(file);
