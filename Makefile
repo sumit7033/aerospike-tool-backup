@@ -276,7 +276,7 @@ RESTORE_OBJ := $(call src_to_obj, $(RESTORE_SRC))
 RESTORE_DEP := $(call obj_to_dep, $(RESTORE_OBJ))
 
 BACKUP := $(DIR_BIN)/asbackup
-RESTORE := $(DIR_BIN)/asrestore
+RESTORE := $(DIR_BIN)/asSelectiverestore
 TOML := $(DIR_TOML)/libtoml.a
 
 SRCS := $(BACKUP_SRC) $(RESTORE_SRC)

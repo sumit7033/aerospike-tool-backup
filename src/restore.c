@@ -27,13 +27,15 @@
 #include <dec_text.h>
 #include <io_proxy.h>
 #include <utils.h>
+#include <khash.h>
 
 
 //==========================================================
 // Typedefs & constants.
 //
 
-#define OPTIONS_SHORT "-h:Sp:A:U:P::n:d:i:t:vm:B:s:urgN:RILFwVZT:y:z:"
+#define OPTIONS_SHORT "-h:Sp:A:U:P::n:d:i:t:vm:B:s:urgN:RILFwVZT:y:z:c:q"
+KHASH_SET_INIT_INT64(bin_set);
 
 static restore_config_t* g_conf;
 static restore_status_t* g_status;
@@ -65,6 +67,9 @@ static bool restore_indexes(aerospike *as, as_vector *index_vec, as_vector *set_
 static bool restore_udf(aerospike *as, udf_param *udf, uint32_t timeout);
 static bool wait_udf(aerospike *as, udf_param *udf, uint32_t timeout);
 static void sig_hand(int32_t sig);
+int check_bin_value(int64_t bin_temp);
+void read_bin_value();
+
 //static void print_stat(per_thread_context_t *ptc, cf_clock *prev_log,
 //		uint64_t *prev_records,	cf_clock *now, cf_clock *store_time, cf_clock *read_time);
 
@@ -72,6 +77,8 @@ static void sig_hand(int32_t sig);
 //==========================================================
 // Public API.
 //
+
+khash_t(bin_set)* bin_set_pointer;
 
 int32_t
 restore_main(int32_t argc, char **argv)
@@ -121,6 +128,13 @@ restore_main(int32_t argc, char **argv)
 	if (conf.machine != NULL && (mach_fd = fopen(conf.machine, "a")) == NULL) {
 		err_code("Error while opening machine-readable file %s", conf.machine);
 		goto cleanup2;
+	}
+
+	if(g_conf->is_selective_restoration) {
+		read_bin_value();
+	} else {
+		err("Error while restoring...");
+		exit(1);
 	}
 
 	char (*node_names)[][AS_NODE_NAME_SIZE] = NULL;
@@ -911,10 +925,24 @@ restore_thread_func(void *cont)
 					ptc.status->skipped_records++;
 					as_record_destroy(&rec);
 				} else {
-					if (!record_uploader_put(&record_uploader, &rec)) {
-						stop();
-						break;
-					}
+					/**
+					 * This condition Checks the provided bin value from file with backup bin value
+					 * If matches it restore that particular record.Otherwise skip the record.
+					*/
+					if(check_bin_value(as_record_get_int64(&rec ,g_conf->selective_bin_name, INT64_MAX))) {
+						ver("Record(ns= %s set= %s %s= %"PRId64") Restoring...", rec.key.ns, rec.key.set, g_conf->selective_bin_name
+						,as_record_get_int64(&rec, g_conf->selective_bin_name, INT64_MAX));
+
+						if (!record_uploader_put(&record_uploader, &rec)) {
+							stop();
+							break;
+						}
+
+					} else {
+						ptc.status->skipped_records++;
+						as_record_destroy(&rec);
+						}
+				
 				}
 
 				ptc.status->total_records++;
@@ -1099,6 +1127,8 @@ counter_thread_func(void *cont)
 	}
 
 	ver("Leaving counter thread");
+	ver("Freeing hashset");
+	kh_destroy(bin_set, bin_set_pointer);
 
 	return (void *)EXIT_SUCCESS;
 }
@@ -1578,3 +1608,65 @@ sig_hand(int32_t sig)
 	stop();
 }
 
+/**
+ ******************************************
+ * Author: s221kuma                       *
+ *                                        *
+ * SelectiveRestorationImpl               *
+ * ****************************************
+*/
+
+/*
+ * check_bin_value function.
+ * @param cont  Checks the bin value of backupfile with given file if matches return 1 if not return 0.
+ * @result      1 or 0.
+ */
+int check_bin_value(int64_t bin_temp) {
+    khint_t k = kh_get(bin_set, bin_set_pointer, bin_temp);
+    return k != kh_end(bin_set_pointer);
+}
+
+/*
+ * read_bin_value function.
+ * @param cont Reads the value from the file and insert into hashSet.
+ */
+void read_bin_value() {
+    struct stat st;
+    if (stat(g_conf->file_path, &st) != 0) {
+		err("Cannot access file/directory: %s", g_conf->file_path);
+    	exit(1);
+    }
+
+    if (S_ISDIR(st.st_mode)) {
+		err("%s is a directory, not a file.", g_conf->file_path);
+        exit(1);
+    }
+
+    FILE* file = fopen(g_conf->file_path, "r");
+    if (file == NULL) {
+        fprintf(stderr, "Cannot open file: %s", g_conf->file_path);
+        exit(1);
+    }
+
+	inf("Reading from the file...");
+    char line[25]; 
+    bin_set_pointer = kh_init(bin_set);
+    while (fgets(line, sizeof(line), file)) {
+        int64_t id; 
+		if(sscanf(line, "%" SCNd64, &id) == 1) {
+			int ret; 
+			kh_put(bin_set, bin_set_pointer, id, &ret); 
+			if (ret < 0) {
+				err("Error inserting into hash set");
+				fclose(file);
+				kh_destroy(bin_set, bin_set_pointer);
+				exit(1);
+			}
+			
+
+		}
+			
+    }
+    fclose(file);
+	inf("Reading completed!");
+}

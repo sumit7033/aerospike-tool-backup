@@ -31,7 +31,7 @@
 // Typedefs & constants.
 //
 
-#define OPTIONS_SHORT "-h:Sp:A:U:P::n:d:i:t:vm:B:s:urgN:RILFwVZT:y:z:"
+#define OPTIONS_SHORT "-h:Sp:A:U:P::n:d:i:t:vm:B:s:urgN:RILFwVZT:y:z:c:q:"
 
 // The C client's version string.
 extern char *aerospike_client_version;
@@ -106,6 +106,7 @@ restore_config_init(int argc, char* argv[], restore_config_t* conf)
 		// asrestore section in config file
 		{ "namespace", required_argument, NULL, 'n' },
 		{ "directory", required_argument, NULL, 'd' },
+		{ "filepath", required_argument, NULL, 'c'},
 		{ "directory-list", required_argument, NULL, COMMAND_OPT_DIRECTORY_LIST },
 		{ "parent-directory", required_argument, NULL, COMMAND_OPT_PARENT_DIRECTORY},
 		{ "input-file", required_argument, NULL, 'i' },
@@ -117,6 +118,7 @@ restore_config_init(int argc, char* argv[], restore_config_t* conf)
 		{ "threads", required_argument, NULL, '_' },
 		{ "machine", required_argument, NULL, 'm' },
 		{ "bin-list", required_argument, NULL, 'B' },
+		{ "restoration-bin-name", optional_argument, NULL, 'q' },
 		{ "set-list", required_argument, NULL, 's' },
 		{ "unique", no_argument, NULL, 'u' },
 		{ "ignore-record-error", no_argument, NULL, 'K'},
@@ -279,6 +281,16 @@ restore_config_init(int argc, char* argv[], restore_config_t* conf)
 		case 'd':
 			conf->directory = safe_strdup(optarg);
 			break;
+
+		case 'c':
+			conf->file_path = safe_strdup(optarg);
+			conf->is_selective_restoration = true;
+			break;	
+
+		case 'q':
+			conf->selective_bin_name = safe_strdup(optarg);
+			conf->check_p = true;
+			break;		
 
 		case COMMAND_OPT_DIRECTORY_LIST:
 			conf->directory_list = safe_strdup(optarg);
@@ -622,6 +634,24 @@ restore_config_init(int argc, char* argv[], restore_config_t* conf)
 		return RESTORE_CONFIG_INIT_FAILURE;
 	}
 
+	if(conf->file_path == NULL) {
+		err("Invalid options: please specify a selective restoration path (-c option).");
+		return RESTORE_CONFIG_INIT_FAILURE;
+	}
+
+	if(conf->set_list == NULL) {
+		err("Invalid options: please specify set (-s option).");
+		return RESTORE_CONFIG_INIT_FAILURE;
+	}
+
+	if(conf->set_list != NULL) {
+		char *temp = strchr(conf->set_list, ',');
+		if(temp != NULL) {
+			err("Invalid argument: please specify set by (-s <set-name> )");
+			return RESTORE_CONFIG_INIT_FAILURE;
+		}
+	}
+
 	if (conf->unique && (conf->replace || conf->no_generation)) {
 		err("Invalid options: --unique is mutually exclusive with --replace and --no-generation.");
 		return RESTORE_CONFIG_INIT_FAILURE;
@@ -726,6 +756,10 @@ restore_config_default(restore_config_t *conf)
 	conf->wait = false;
 	conf->ns_list = NULL;
 	conf->directory = NULL;
+	conf->is_selective_restoration = false;
+	conf->file_path = NULL;
+	conf->selective_bin_name = DEFAULT_BIN_NAME;
+	conf->check_p = false;
 	conf->directory_list = NULL;
 	conf->parent_directory = NULL;
 	conf->input_file = NULL;
@@ -799,6 +833,14 @@ restore_config_destroy(restore_config_t *conf)
 
 	if (conf->directory != NULL) {
 		cf_free(conf->directory);
+	}
+
+	if(conf->file_path != NULL) {
+		cf_free(conf->file_path);
+	}
+
+	if(conf->selective_bin_name != NULL && conf->check_p == true) {
+		cf_free(conf->selective_bin_name);
 	}
 
 	if (conf->directory_list != NULL) {
@@ -1003,6 +1045,12 @@ usage(const char *name)
 	fprintf(stdout, "                      A comma seperated list of paths to directories that hold the backup files. Required, \n");
 	fprintf(stdout, "                      unless -i or -d is used. The paths may not contain commas.\n");
 	fprintf(stdout, "                      Example: `asrestore --directory-list /path/to/dir1/,/path/to/dir2`\n");
+	fprintf(stdout, "  -c, --filepath <selective Restoration>\n");
+	fprintf(stdout, "                      It is used give the path of from which to restore. Optional, \n");
+	fprintf(stdout, "                      if not given all the ids will be restored.\n");
+	fprintf(stdout, "  -q, --selective  Restoration Bin Name (ex - id, , set) >\n");
+	fprintf(stdout, "                      It is to specify what the Selective Restoration file contain (ex -id). optional, \n");
+	fprintf(stdout, "                      If not provided then the default bin is id\n");
 	fprintf(stdout, "      --parent-directory <directory>\n");
 	fprintf(stdout, "                      A common root path for all paths used in --directory-list.\n");
 	fprintf(stdout, "                      This path is prepended to all entries in --directory-list.\n");

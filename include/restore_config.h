@@ -68,7 +68,7 @@ extern "C" {
 #define BATCH_SIZE_UNDEFINED -1u
 
 #define DEFAULT_EVENT_LOOPS 1
-
+#define DEFAULT_BIN_NAME "id"
 /*
  * The global restore configuration and stats shared by all restore threads and the counter thread.
  */
@@ -131,6 +131,11 @@ typedef struct restore_config {
 	char *ns_list;
 	// The directory to restore from. `NULL`, when restoring from a single file.
 	char *directory;
+	//selective Restoration
+	char *file_path;
+	bool is_selective_restoration;
+	char *selective_bin_name;
+	bool check_p;
 	// A list of directories to restore from. `NULL`, when restoring from a single file or directory.
 	char *directory_list;
 	// A common path to be prepended to entries in directory_list.
