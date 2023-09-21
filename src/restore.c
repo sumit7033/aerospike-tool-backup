@@ -1654,16 +1654,19 @@ void read_bin_value() {
     while (fgets(line, sizeof(line), file)) {
         int64_t id; 
 		if(sscanf(line, "%" SCNd64, &id) == 1) {
-			int ret; 
-			kh_put(bin_set, bin_set_pointer, id, &ret); 
-			if (ret < 0) {
-				err("Error inserting into hash set");
-				fclose(file);
-				kh_destroy(bin_set, bin_set_pointer);
-				exit(1);
-			}
+			if(id < INT64_MAX && id > INT64_MIN) {
+				int ret; 
+				kh_put(bin_set, bin_set_pointer, id, &ret); 
+				if (ret < 0) {
+					err("Error inserting into hash set");
+					fclose(file);
+					kh_destroy(bin_set, bin_set_pointer);
+					exit(1);
+				}
 			
-
+			} else {
+				inf("Value out of range!!");
+			}
 		}
 			
     }
