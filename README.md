@@ -102,8 +102,10 @@ sudo yum install rpm-build rpmdevtools
 ```
 
 ### Create a working directory.
-rpmdev-setuptree  (This will create a directory name as rpmbuild in /root directory 
-
+```shell
+rpmdev-setuptree  
+(Note: This will create a directory name as rpmbuild in /root directory)
+```
 ### Create a spec file.
 ```shell
 rpmdev-newspec <my_package_name>
