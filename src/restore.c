@@ -1622,8 +1622,7 @@ sig_hand(int32_t sig)
  * @result      1 or 0.
  */
 int check_bin_value(int64_t bin_temp) {
-    khint_t k = kh_get(bin_set, bin_set_pointer, bin_temp);
-    return k != kh_end(bin_set_pointer);
+    return kh_get(bin_set, bin_set_pointer, bin_temp) != kh_end(bin_set_pointer);
 }
 
 /*
